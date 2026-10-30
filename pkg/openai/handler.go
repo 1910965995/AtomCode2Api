@@ -249,8 +249,10 @@ func (s *Server) handleStreamChat(w http.ResponseWriter, r *http.Request, req *C
 
 	ch, err := s.Client.ChatStream(daemonReq)
 	if err != nil {
-		errJSON := fmt.Sprintf(`data: {"error":"%s"}\n\ndata: [DONE]\n\n`, err.Error())
-		fmt.Fprint(w, errJSON)
+		// The stream headers are already sent, so report through the SSE body.
+		// Encode the message so quotes and newlines stay valid JSON.
+		errPayload, _ := json.Marshal(map[string]string{"error": err.Error()})
+		fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", errPayload)
 		flusher.Flush()
 		return
 	}
@@ -267,7 +269,8 @@ func (s *Server) handleStreamChat(w http.ResponseWriter, r *http.Request, req *C
 			if hasToolUse {
 				finishReason = "tool_calls"
 			}
-			finishChunk := fmt.Sprintf(`{"id":"chatcmpl-atomcode","object":"chat.completion.chunk","created":%d,"model":"%s","choices":[{"delta":{},"finish_reason":"%s","index":0}]}`, time.Now().Unix(), req.Model, finishReason)
+			modelJSON, _ := json.Marshal(req.Model)
+			finishChunk := fmt.Sprintf(`{"id":"chatcmpl-atomcode","object":"chat.completion.chunk","created":%d,"model":%s,"choices":[{"delta":{},"finish_reason":"%s","index":0}]}`, time.Now().Unix(), modelJSON, finishReason)
 			fmt.Fprintf(w, "data: %s\n\n", finishChunk)
 			flusher.Flush()
 			fmt.Fprint(w, "data: [DONE]\n\n")

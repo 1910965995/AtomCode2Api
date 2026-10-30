@@ -107,7 +107,7 @@ func TranslateToOpenAIChunk(ev *SSEEvent, model string, toolIdx *int) string {
 	case "tool_result":
 		return ""
 	case "tokens":
-		return fmt.Sprintf(`{"choices":[],"usage":{"prompt_tokens":%d,"completion_tokens":%d,"total_tokens":%d}`,
+		return fmt.Sprintf(`{"choices":[],"usage":{"prompt_tokens":%d,"completion_tokens":%d,"total_tokens":%d}}`,
 			ev.Prompt, ev.Completion, ev.Total)
 	case "done", "stopped":
 		return "__DONE__"
@@ -123,7 +123,10 @@ func BuildOpenAIFullChunk(deltaJSON string, model string) string {
 	if deltaJSON == "__DONE__" {
 		return ""
 	}
-	return fmt.Sprintf(`{"id":"chatcmpl-atomcode","object":"chat.completion.chunk","created":%d,"model":%s,%s}`,
+	// deltaJSON is a complete object like {"choices":[...]}; drop its leading
+	// brace and splice the remaining members in, so the trailing brace of the
+	// envelope is the only closing one.
+	return fmt.Sprintf(`{"id":"chatcmpl-atomcode","object":"chat.completion.chunk","created":%d,"model":%s,%s`,
 		time.Now().Unix(), jsonString(model), deltaJSON[1:])
 }
 

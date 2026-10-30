@@ -176,7 +176,10 @@ func (h *Handler) handleStreamChat(w http.ResponseWriter, r *http.Request, req *
 
 	ch, err := h.Client.ChatStream(daemonReq)
 	if err != nil {
-		fmt.Fprintf(w, "data: {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"%s\"}}\n\n", err.Error())
+		// The stream headers are already sent, so report through the SSE body.
+		// Encode the message so quotes and newlines stay valid JSON.
+		msg, _ := json.Marshal(err.Error())
+		fmt.Fprintf(w, "data: {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":%s}}\n\n", msg)
 		flusher.Flush()
 		return
 	}
